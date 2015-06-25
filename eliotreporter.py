@@ -27,7 +27,6 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
-        print method
         self._action = start_action(action_type=u'trial:test',
                                     test=method.id())
 

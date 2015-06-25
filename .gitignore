@@ -1,3 +1,4 @@
 /.env/
 /trial_eliot.egg-info/
 /twisted/plugins/dropin.cache
+/_trial_temp/
