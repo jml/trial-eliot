@@ -1,0 +1,4 @@
+eliot
+pyrsistent
+Twisted
+zope.interface
