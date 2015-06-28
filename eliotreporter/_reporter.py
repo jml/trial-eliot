@@ -14,11 +14,19 @@
 
 import json
 
-from eliot import add_destination, start_action
+from eliot import ActionType, add_destination, Field
 from pyrsistent import PClass, field
 from twisted.plugin import IPlugin
 from twisted.trial.itrial import IReporter
 from zope.interface import implementer
+
+
+_TEST = Field(u'test', lambda test: test.id(), u'The test')
+
+TEST = ActionType(u'trial:test',
+                  [_TEST],
+                  [],
+                  u'A test')
 
 
 @implementer(IReporter)
@@ -41,8 +49,7 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
-        self._action = start_action(action_type=u'trial:test',
-                                    test=method.id())
+        self._action = TEST(test=method)
 
     def stopTest(self, method):
         """
