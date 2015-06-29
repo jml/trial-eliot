@@ -1,0 +1,52 @@
+"""
+Workaround to parse Eliot logs out of the Trial test.log.
+"""
+
+import ast
+import json
+import re
+import sys
+
+
+def iter_log_entries(log_lines):
+    buffer = []
+    for line in log_lines:
+        if buffer and _is_new_entry(line):
+            yield ''.join(buffer)
+            buffer = []
+        buffer.append(line)
+
+
+_DATE_RE = re.compile(r'^[\d]+-\d\d-\d\d ')
+
+
+def _is_new_entry(line):
+    return _DATE_RE.match(line)
+
+
+_ELIOT_TOKEN = '[-] ELIOT: '
+
+
+def _parse_eliot_entry(entry):
+    index = entry.find(_ELIOT_TOKEN)
+    if index == -1:
+        return
+    eliot_string = entry[index + len(_ELIOT_TOKEN):]
+    try:
+        eliot_dict = ast.literal_eval(eliot_string)
+    except ValueError:
+        sys.stderr.write('UNPARSEABLE: {}\n'.format(entry))
+    else:
+        return json.dumps(eliot_dict)
+
+
+def main():
+    with open(sys.argv[1]) as log_file:
+        for entry in iter_log_entries(log_file):
+            eliot = _parse_eliot_entry(entry)
+            if eliot:
+                print eliot
+
+
+if __name__ == '__main__':
+    main()
