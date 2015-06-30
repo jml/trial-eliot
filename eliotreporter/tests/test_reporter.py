@@ -32,7 +32,10 @@ class TestEliotReporter(unittest.TestCase):
         return self
 
     @capture_logging(None)
-    def test_thing(self, logger):
+    def test_successful_test(self, logger):
+        """
+        Starting and stopping a test logs a whole action.
+        """
         reporter = self.make_reporter()
         test = self.make_test()
         reporter.startTest(test)
