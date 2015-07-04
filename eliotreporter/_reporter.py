@@ -50,6 +50,7 @@ class EliotReporter(object):
         @param method: an object that is adaptable to ITestMethod
         """
         self._action = TEST(test=method)
+        self._action.__enter__()
 
     def stopTest(self, method):
         """
@@ -57,7 +58,7 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
-        self._action.finish()
+        self._action.__exit__(None, None, None)
 
     def addSuccess(self, test):
         """
