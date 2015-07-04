@@ -23,7 +23,15 @@ setup(
     description="Eliot reporter for Trial.",
     author="Jonathan Lange",
     author_email="jml@mumak.net",
-    install_requires=[],
+    install_requires=[
+        'eliot',
+        'pyrsistent',
+        'Twisted',
+        'zope.interface',
+    ],
+    tests_require=[
+        'unittest2',
+    ],
     zip_safe=False,
     packages=find_packages('.'),
     classifiers=[
