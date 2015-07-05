@@ -127,3 +127,24 @@ class TestEliotReporter(unittest.TestCase):
              u'reason': error,
              u'task_level': [2],
             }, failure_message)
+
+    @capture_logging(None)
+    def test_run_erroring_test(self, logger):
+        """
+        Running a failing test records the failure as a message.
+        """
+        reporter = self.make_reporter()
+        error = RuntimeError('everything is catching on fire')
+        test = self.make_failing_test(error)
+        test.run(reporter)
+        self.assert_one_task(logger.messages)
+        failure_message = dict(logger.messages[1])
+        failure_message.pop('task_uuid')
+        failure_message.pop('timestamp')
+        failure_message.pop('traceback')
+        self.assertEqual(
+            {u'exception': error.__class__,
+             u'message_type': u'trial:test:error',
+             u'reason': error,
+             u'task_level': [2],
+            }, failure_message)

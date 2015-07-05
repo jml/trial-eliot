@@ -42,6 +42,7 @@ _REASON = Field(u'reason', unicode, 'The reason for the raised exception')
 _TRACEBACK = Field(u'traceback', unicode, 'The traceback')
 
 
+ERROR = MessageType(u'trial:test:error', [_EXCEPTION, _REASON, _TRACEBACK])
 FAILURE = MessageType(u'trial:test:failure', [_EXCEPTION, _REASON, _TRACEBACK])
 
 
@@ -113,6 +114,7 @@ class EliotReporter(object):
             three-tuple in the style of C{sys.exc_info()} or a
             L{Failure<twisted.python.failure.Failure>} object.
         """
+        make_error_message(ERROR, error).write()
 
     def addFailure(self, test, failure):
         """
