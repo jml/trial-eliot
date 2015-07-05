@@ -27,6 +27,7 @@ from ._types import (
     TEST,
     UNEXPECTED_SUCCESS,
     make_error_message,
+    make_expected_failure_message,
 )
 
 
@@ -130,6 +131,7 @@ class EliotReporter(object):
         @param todo: The reason for the test's TODO status.
         """
         self._ensure_test_running(test)
+        make_expected_failure_message(todo, failure).write()
 
     def addUnexpectedSuccess(self, test, todo):
         """

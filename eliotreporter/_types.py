@@ -37,6 +37,8 @@ def _exception_name(exception_class):
         exception_class.__module__, exception_class.__name__)
 
 
+# TODO: These get re-used in a few different MessageTypes. Is there a way to
+# reduce that duplication by representing these as their own type?
 _EXCEPTION = Field(
     u'exception', _exception_name, 'An exception raised by a test')
 _REASON = Field(u'reason', unicode, 'The reason for the raised exception')
@@ -67,6 +69,14 @@ SKIP = MessageType(u'trial:test:skip', [_SKIP_REASON])
 _TODO = Field(u'todo', lambda x: x.reason)
 
 UNEXPECTED_SUCCESS = MessageType(u'trial:test:unexpected-success', [_TODO])
+EXPECTED_FAILURE = MessageType(
+    u'trial:test:expected-failure', [
+        _TODO,
+        _EXCEPTION,
+        _REASON,
+        _TRACEBACK,
+    ],
+)
 
 
 def _failure_to_exception_tuple(failure):
@@ -103,6 +113,25 @@ def make_error_message(message_type, failure):
     """
     exc_type, exc_value, exc_traceback = _adapt_to_exception_tuple(failure)
     return message_type(
+        exception=exc_type,
+        reason=exc_value,
+        traceback=exc_traceback,
+    )
+
+
+def make_expected_failure_message(todo, failure):
+    """
+    Create a message for an expected failure.
+
+    :param todo: The reason given for expecting the failure.
+    :param failure: The failure that occurred. Either a
+        ``twisted.python.failure.Failure`` or an exception 3-tuple.
+
+    :return: An Eliot ``Message``.
+    """
+    exc_type, exc_value, exc_traceback = _adapt_to_exception_tuple(failure)
+    return EXPECTED_FAILURE(
+        todo=todo,
         exception=exc_type,
         reason=exc_value,
         traceback=exc_traceback,

@@ -213,6 +213,33 @@ class TestEliotReporter(unittest.TestCase):
              u'task_level': [2],
             }, failure_message)
 
+    @capture_logging(None)
+    def test_expected_failure(self, logger):
+        """
+        Running a test that unexpectedly succeeds logs that success as a
+        message.
+        """
+        reporter = make_reporter()
+        reason = 'No need'
+        exception = RuntimeError('Nothing is ever as we expect')
+        test = make_expected_failure_test(
+            reason, lambda ignored: _raise(exception))
+        test.run(reporter)
+        self.assert_one_task(logger.messages)
+        failure_message = dict(logger.messages[1])
+        failure_message.pop('task_uuid')
+        failure_message.pop('timestamp')
+        failure_message.pop('traceback')
+        # Because 'Todo' is not a value.
+        todo = failure_message.pop('todo')
+        self.assertEqual(reason, todo.reason)
+        self.assertEqual(
+            {u'message_type': u'trial:test:expected-failure',
+             u'task_level': [2],
+             u'exception': exception.__class__,
+             u'reason': exception,
+            }, failure_message)
+
 
 class TestEliotReporterDefences(unittest.TestCase):
     """Test the defensive assertions in EliotReporter.
