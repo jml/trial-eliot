@@ -42,9 +42,13 @@ class EliotReporter(object):
 
     def __init__(self, stream, tbformat='default', realtime=False,
                  publisher=None):
+        # TODO: Trial has a pretty confusing set of expectations for
+        # reporters. In particular, it's not clear what it needs to construct
+        # a reporter. It's also not clear what it expects as public
+        # properties. The IReporter interface and the tests for the reporter
+        # interface cover somewhat different things.
         self._stream = stream
         self.tbformat = tbformat
-        self.args = ()
         self.shouldStop = False
         self.testsRun = 0
         add_destination(self._write_message)
@@ -96,11 +100,6 @@ class EliotReporter(object):
     def addError(self, test, error):
         """
         Record that a test has raised an unexpected exception.
-
-        @param test: The test that has raised an error.
-        @param error: The error that the test raised. It will either be a
-            three-tuple in the style of C{sys.exc_info()} or a
-            L{Failure<twisted.python.failure.Failure>} object.
         """
         self._ensure_test_running(test)
         make_error_message(ERROR, error).write()
@@ -109,11 +108,6 @@ class EliotReporter(object):
     def addFailure(self, test, failure):
         """
         Record that a test has failed with the given failure.
-
-        @param test: The test that has failed.
-        @param failure: The failure that the test failed with. It will
-            either be a three-tuple in the style of C{sys.exc_info()}
-            or a L{Failure<twisted.python.failure.Failure>} object.
         """
         self._ensure_test_running(test)
         make_error_message(FAILURE, failure).write()
@@ -122,13 +116,6 @@ class EliotReporter(object):
     def addExpectedFailure(self, test, failure, todo):
         """
         Record that the given test failed, and was expected to do so.
-
-        @type test: L{pyunit.TestCase}
-        @param test: The test which this is about.
-        @type error: L{failure.Failure}
-        @param error: The error which this test failed with.
-        @type todo: L{unittest.Todo}
-        @param todo: The reason for the test's TODO status.
         """
         self._ensure_test_running(test)
         make_expected_failure_message(todo, failure).write()
@@ -136,11 +123,6 @@ class EliotReporter(object):
     def addUnexpectedSuccess(self, test, todo):
         """
         Record that the given test failed, and was expected to do so.
-
-        @type test: L{pyunit.TestCase}
-        @param test: The test which this is about.
-        @type todo: L{unittest.Todo}
-        @param todo: The reason for the test's TODO status.
         """
         self._ensure_test_running(test)
         UNEXPECTED_SUCCESS(todo=todo).write()
@@ -148,19 +130,11 @@ class EliotReporter(object):
     def addSkip(self, test, reason):
         """
         Record that a test has been skipped for the given reason.
-
-        @param test: The test that has been skipped.
-        @param reason: An object that the test case has specified as the reason
-            for skipping the test.
         """
         self._ensure_test_running(test)
         SKIP(reason=reason).write()
 
     def wasSuccessful(self):
-        """
-        Return a boolean indicating whether all test results that were reported
-        to this reporter were successful or not.
-        """
         return self._successful
 
     def stop(self):
@@ -169,11 +143,6 @@ class EliotReporter(object):
     def done(self):
         """
         Called when the test run is complete.
-
-        This gives the result object an opportunity to display a summary of
-        information to the user. Once you have called C{done} on an
-        L{IReporter} object, you should assume that the L{IReporter} object is
-        no longer usable.
         """
 
 

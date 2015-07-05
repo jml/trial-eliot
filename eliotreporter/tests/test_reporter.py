@@ -18,7 +18,7 @@ import unittest2 as unittest
 from eliot import Field, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
 from twisted.trial.test import test_reporter
-from twisted.trial.unittest import makeTodo, SkipTest, SynchronousTestCase
+from twisted.trial.unittest import SkipTest, SynchronousTestCase
 
 from eliotreporter import EliotReporter
 from .._reporter import TEST, InvalidStateError
