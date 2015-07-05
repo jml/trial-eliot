@@ -62,7 +62,7 @@ class InvalidStateError(Exception):
 class EliotReporter(object):
 
     def __init__(self, stream, tbformat='default', realtime=False,
-                 publisher=None):
+                 publisher=None, logger=None):
         # TODO: Trial has a pretty confusing set of expectations for
         # reporters. In particular, it's not clear what it needs to construct
         # a reporter. It's also not clear what it expects as public
@@ -75,12 +75,14 @@ class EliotReporter(object):
         add_destination(self._write_message)
         self._current_test = None
         self._successful = True
+        self._logger = logger
 
     def _write_message(self, message):
         self._stream.write(json.dumps(message) + "\n")
 
     def _ensure_test_running(self, expected_test):
-        if self._current_test and self._current_test != expected_test:
+        current = self._current_test
+        if current and current.id() != expected_test.id():
             raise InvalidStateError(
                 'Expected {} to be running, was {} instead'.format(
                     expected_test, self._current_test))
@@ -96,7 +98,7 @@ class EliotReporter(object):
                 'Trying to start {}, but {} already started'.format(
                     method, self._current_test))
         self._current_test = method
-        self._action = TEST(test=method)
+        self._action = TEST(test=method, logger=self._logger)
         self._action.__enter__()
 
     def stopTest(self, method):
@@ -123,7 +125,7 @@ class EliotReporter(object):
         Record that a test has raised an unexpected exception.
         """
         self._ensure_test_running(test)
-        make_error_message(ERROR, error).write()
+        make_error_message(ERROR, error).write(self._logger)
         self._successful = False
 
     def addFailure(self, test, failure):
@@ -131,7 +133,7 @@ class EliotReporter(object):
         Record that a test has failed with the given failure.
         """
         self._ensure_test_running(test)
-        make_error_message(FAILURE, failure).write()
+        make_error_message(FAILURE, failure).write(self._logger)
         self._successful = False
 
     def addExpectedFailure(self, test, failure, todo):
@@ -139,21 +141,21 @@ class EliotReporter(object):
         Record that the given test failed, and was expected to do so.
         """
         self._ensure_test_running(test)
-        make_expected_failure_message(todo, failure).write()
+        make_expected_failure_message(todo, failure).write(self._logger)
 
     def addUnexpectedSuccess(self, test, todo):
         """
         Record that the given test failed, and was expected to do so.
         """
         self._ensure_test_running(test)
-        UNEXPECTED_SUCCESS(todo=todo).write()
+        UNEXPECTED_SUCCESS(todo=todo).write(self._logger)
 
     def addSkip(self, test, reason):
         """
         Record that a test has been skipped for the given reason.
         """
         self._ensure_test_running(test)
-        SKIP(reason=reason).write()
+        SKIP(reason=reason).write(self._logger)
 
     def wasSuccessful(self):
         return self._successful

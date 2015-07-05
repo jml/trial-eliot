@@ -15,7 +15,7 @@
 from StringIO import StringIO
 import unittest2 as unittest
 
-from eliot import Field, MessageType
+from eliot import Field, MemoryLogger, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
 from twisted.trial.test import test_reporter
 from twisted.trial.unittest import SkipTest, SynchronousTestCase
@@ -32,10 +32,10 @@ def get_task_ids(messages):
     return set((x['task_uuid'] for x in messages))
 
 
-def make_reporter(stream=None):
+def make_reporter(stream=None, logger=None):
     if stream is None:
         stream = StringIO()
-    return EliotReporter(stream, None, None, None)
+    return EliotReporter(stream, None, None, None, logger=logger)
 
 
 def make_test(name, function, *args, **kwargs):
@@ -256,88 +256,108 @@ class TestEliotReporterDefences(unittest.TestCase):
     that the defensive assertions we've written work as expected.
     """
 
+    def make_reporter(self):
+        return make_reporter(logger=MemoryLogger())
+
     def test_start_test_twice(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test = make_successful_test()
         reporter.startTest(test)
+        self.addCleanup(reporter.stopTest, test)
         self.assertRaises(InvalidStateError, reporter.startTest, test)
 
     def test_stop_without_start(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test = make_successful_test()
         self.assertRaises(InvalidStateError, reporter.stopTest, test)
 
     def test_stop_different_to_start(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(InvalidStateError, reporter.stopTest, test2)
 
     def test_stop_resets(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         reporter.startTest(test1)
         reporter.stopTest(test1)
         self.assertIs(None, reporter.startTest(test2))
+        reporter.stopTest(test2)
 
     def test_different_success(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(InvalidStateError, reporter.addSuccess, test2)
 
     def test_different_failure(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         dummy_failure = (None, None, None)
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(
             InvalidStateError, reporter.addFailure, test2, dummy_failure)
 
     def test_different_error(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         dummy_error = (None, None, None)
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(
             InvalidStateError, reporter.addError, test2, dummy_error)
 
     def test_different_expected_failure(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         dummy_error = (None, None, None)
         dummy_todo = None
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(
             InvalidStateError,
             reporter.addExpectedFailure, test2, dummy_error, dummy_todo)
 
     def test_different_unexpected_success(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         dummy_todo = None
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(
             InvalidStateError,
             reporter.addUnexpectedSuccess, test2, dummy_todo)
 
     def test_different_skip(self):
-        reporter = make_reporter()
+        reporter = self.make_reporter()
         test1 = make_successful_test('test1')
         test2 = make_successful_test('test2')
         dummy_reason = None
         reporter.startTest(test1)
+        self.addCleanup(reporter.stopTest, test1)
         self.assertRaises(
             InvalidStateError, reporter.addSkip, test2, dummy_reason)
 
 
+
+
 class InterfaceTests(test_reporter.ReporterInterfaceTests):
 
-    resultFactory = EliotReporter
+    @staticmethod
+    def make_eliot_reporter(stream, publisher=None):
+        memory_logger = MemoryLogger()
+        return EliotReporter(
+            stream, publisher=publisher, logger=memory_logger)
+
+    resultFactory = make_eliot_reporter
