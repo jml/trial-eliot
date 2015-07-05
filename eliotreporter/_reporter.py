@@ -58,6 +58,17 @@ class InvalidStateError(Exception):
 # unless there's something that consumes the output and displays the results
 # as something that matters to humans.
 
+# TODO: Currently the action of a test "succeeds" whether or not the test
+# passes. It's unclear whether this is the right behaviour. Factors:
+#
+# - when reading eliot output, it makes it harder to see whether a test
+#   passed or failed.
+# - tests can have multiple errors, if we made the action fail on test failure,
+#   then we'd have to aggregate these errors somehow.
+# - aggregating the errors would mean that we either would not see them at all
+#   until the test completes, or that we would log duplicate actions
+
+
 @implementer(IReporter)
 class EliotReporter(object):
 
@@ -99,6 +110,9 @@ class EliotReporter(object):
                     method, self._current_test))
         self._current_test = method
         self._action = TEST(test=method, logger=self._logger)
+        # TODO: This isn't using Eliot the way it was intended. Probably a
+        # better way is to have a test case (or a testtools-style TestCase
+        # runner!) that does all of this.
         self._action.__enter__()
 
     def stopTest(self, method):
