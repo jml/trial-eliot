@@ -128,9 +128,6 @@ class TestEliotReporter(unittest.TestCase):
         test.run(reporter)
         # TODO: We can probably assert more specific things, that `message` is
         # one of the logged `messages`.
-        self.assertEqual(
-            [[1], [2], [3]],
-            [x['task_level'] for x in logger.messages])
         self.assert_one_task(logger.messages)
 
     @capture_logging(None)
@@ -145,6 +142,7 @@ class TestEliotReporter(unittest.TestCase):
         self.assert_one_task(logger.messages)
         failure_message = dict(logger.messages[1])
         failure_message.pop('task_uuid')
+        failure_message.pop('task_level')
         failure_message.pop('timestamp')
         failure_message.pop('traceback')
         observed_reason = failure_message.pop('reason')
@@ -152,7 +150,6 @@ class TestEliotReporter(unittest.TestCase):
         self.assertEqual(
             {u'exception': test.failureException,
              u'message_type': u'trial:test:failure',
-             u'task_level': [2],
             }, failure_message)
 
     @capture_logging(None)
@@ -167,13 +164,13 @@ class TestEliotReporter(unittest.TestCase):
         self.assert_one_task(logger.messages)
         failure_message = dict(logger.messages[1])
         failure_message.pop('task_uuid')
+        failure_message.pop('task_level')
         failure_message.pop('timestamp')
         failure_message.pop('traceback')
         self.assertEqual(
             {u'exception': error.__class__,
              u'message_type': u'trial:test:error',
              u'reason': error,
-             u'task_level': [2],
             }, failure_message)
 
     @capture_logging(None)
@@ -188,11 +185,11 @@ class TestEliotReporter(unittest.TestCase):
         self.assert_one_task(logger.messages)
         failure_message = dict(logger.messages[1])
         failure_message.pop('task_uuid')
+        failure_message.pop('task_level')
         failure_message.pop('timestamp')
         self.assertEqual(
             {u'message_type': u'trial:test:skip',
              u'reason': reason,
-             u'task_level': [2],
             }, failure_message)
 
     @capture_logging(None)
@@ -208,13 +205,13 @@ class TestEliotReporter(unittest.TestCase):
         self.assert_one_task(logger.messages)
         failure_message = dict(logger.messages[1])
         failure_message.pop('task_uuid')
+        failure_message.pop('task_level')
         failure_message.pop('timestamp')
         # Because 'Todo' is not a value.
         todo = failure_message.pop('todo')
         self.assertEqual(reason, todo.reason)
         self.assertEqual(
             {u'message_type': u'trial:test:unexpected-success',
-             u'task_level': [2],
             }, failure_message)
 
     @capture_logging(None)
@@ -232,6 +229,7 @@ class TestEliotReporter(unittest.TestCase):
         self.assert_one_task(logger.messages)
         failure_message = dict(logger.messages[1])
         failure_message.pop('task_uuid')
+        failure_message.pop('task_level')
         failure_message.pop('timestamp')
         failure_message.pop('traceback')
         # Because 'Todo' is not a value.
@@ -239,7 +237,6 @@ class TestEliotReporter(unittest.TestCase):
         self.assertEqual(reason, todo.reason)
         self.assertEqual(
             {u'message_type': u'trial:test:expected-failure',
-             u'task_level': [2],
              u'exception': exception.__class__,
              u'reason': exception,
             }, failure_message)
