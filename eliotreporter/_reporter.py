@@ -36,6 +36,27 @@ class InvalidStateError(Exception):
     Raised when someone attempts to put an EliotReporter into an invalid state.
     """
 
+# TODO: The Trial base reporter does some sort of warning capturing. It would
+# be good to do something similar here so that *everything* that the test
+# emits is captured in single, coheerent Eliot log.
+
+# TODO: Ideally we'd also capture stdout & stderr and encode those as Eliot
+# messages. Probably can't be done at the reporter level, but we can provide
+# functions for tests to be able to use that.
+
+# TODO: Should setUp, tearDown, the test itself and cleanup also be Eliot
+# actions? If so, that's a thing for the base test case rather than the
+# reporter.
+
+# TODO: Currently Eliot has support for capturing the eliot logs and dumping
+# them to the Twisted log, which Trial stores as _trial_temp/test.log. If
+# we're using something like this, then we actually want all of those log
+# messages to be included as part of the test action, included in the same
+# log.
+
+# TODO: "The value is in the output". No one is going to care about this
+# unless there's something that consumes the output and displays the results
+# as something that matters to humans.
 
 @implementer(IReporter)
 class EliotReporter(object):
