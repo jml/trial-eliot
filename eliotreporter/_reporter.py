@@ -14,59 +14,18 @@
 
 import json
 
-from eliot import ActionType, add_destination, Field, MessageType
+from eliot import add_destination
 from pyrsistent import PClass, field
 from twisted.plugin import IPlugin
-from twisted.python.failure import Failure
 from twisted.trial.itrial import IReporter
 from zope.interface import implementer
 
-
-_TEST = Field(u'test', lambda test: test.id(), u'The test')
-
-
-TEST = ActionType(u'trial:test',
-                  [_TEST],
-                  [],
-                  u'A test')
-
-
-def _exception_name(exception_class):
-    return '{}.{}'.format(
-        exception_class.__module__, exception_class.__name__)
-
-
-_EXCEPTION = Field(
-    u'exception', _exception_name, 'An exception raised by a test')
-_REASON = Field(u'reason', unicode, 'The reason for the raised exception')
-_TRACEBACK = Field(u'traceback', unicode, 'The traceback')
-
-
-ERROR = MessageType(u'trial:test:error', [_EXCEPTION, _REASON, _TRACEBACK])
-FAILURE = MessageType(u'trial:test:failure', [_EXCEPTION, _REASON, _TRACEBACK])
-
-
-def _failure_to_exception_tuple(failure):
-    return (
-        failure.value.__class__,
-        failure.value,
-        failure.getBriefTraceback(),
-    )
-
-
-def _adapt_to_exception_tuple(failure):
-    if isinstance(failure, Failure):
-        return _failure_to_exception_tuple(failure)
-    return failure
-
-
-def make_error_message(message_type, failure):
-    exc_type, exc_value, exc_traceback = _adapt_to_exception_tuple(failure)
-    return message_type(
-        exception=exc_type,
-        reason=exc_value,
-        traceback=exc_traceback,
-    )
+from ._types import (
+    TEST,
+    ERROR,
+    FAILURE,
+    make_error_message,
+)
 
 
 class InvalidStateError(Exception):
