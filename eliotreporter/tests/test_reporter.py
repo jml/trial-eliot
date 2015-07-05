@@ -18,7 +18,7 @@ import unittest2 as unittest
 from eliot import Field, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
 from twisted.trial.test import test_reporter
-from twisted.trial.unittest import SkipTest, SynchronousTestCase
+from twisted.trial.unittest import makeTodo, SkipTest, SynchronousTestCase
 
 from eliotreporter import EliotReporter
 from .._reporter import TEST, InvalidStateError
@@ -77,6 +77,12 @@ def make_erroring_test(exception):
 def make_skipping_test(reason):
     error = SkipTest(reason)
     return make_erroring_test(error)
+
+
+def make_expected_failure_test(reason, function, *args, **kwargs):
+    test = make_test(function, *args, **kwargs)
+    test.todo = reason
+    return test
 
 
 class TestEliotReporter(unittest.TestCase):
@@ -182,6 +188,28 @@ class TestEliotReporter(unittest.TestCase):
         self.assertEqual(
             {u'message_type': u'trial:test:skip',
              u'reason': reason,
+             u'task_level': [2],
+            }, failure_message)
+
+    @capture_logging(None)
+    def test_unexpected_success(self, logger):
+        """
+        Running a test that unexpectedly succeeds logs that success as a
+        message.
+        """
+        reporter = make_reporter()
+        reason = 'No need'
+        test = make_expected_failure_test(reason, lambda ignored: None)
+        test.run(reporter)
+        self.assert_one_task(logger.messages)
+        failure_message = dict(logger.messages[1])
+        failure_message.pop('task_uuid')
+        failure_message.pop('timestamp')
+        # Because 'Todo' is not a value.
+        todo = failure_message.pop('todo')
+        self.assertEqual(reason, todo.reason)
+        self.assertEqual(
+            {u'message_type': u'trial:test:unexpected-success',
              u'task_level': [2],
             }, failure_message)
 

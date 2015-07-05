@@ -63,6 +63,12 @@ Logged when a test is skipped.
 SKIP = MessageType(u'trial:test:skip', [_SKIP_REASON])
 
 
+# TODO: Test *all* the serialization
+_TODO = Field(u'todo', lambda x: x.reason)
+
+UNEXPECTED_SUCCESS = MessageType(u'trial:test:unexpected-success', [_TODO])
+
+
 def _failure_to_exception_tuple(failure):
     """
     Convert a ``Failure`` to an exception 3-tuple.
