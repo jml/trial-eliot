@@ -19,7 +19,7 @@ from eliot import Field, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
 
 from eliotreporter import EliotReporter
-from .._reporter import TEST
+from .._reporter import TEST, InvalidStateError
 
 
 DUMMY_MESSAGE = MessageType(
@@ -148,3 +148,104 @@ class TestEliotReporter(unittest.TestCase):
              u'reason': error,
              u'task_level': [2],
             }, failure_message)
+
+
+class TestEliotReporterDefences(unittest.TestCase):
+    """Test the defensive assertions in EliotReporter.
+
+    The reporter interface doesn't define what happens when someone tries to
+    stop a test that hasn't started, or start a test while another is running.
+    It assumes that only one test is running at a time.
+
+    These tests exercise that undefined behaviour. Specifically, the make sure
+    that the defensive assertions we've written work as expected.
+    """
+
+    def make_reporter(self, stream=None):
+        if stream is None:
+            stream = StringIO()
+        return EliotReporter(stream, None, None, None)
+
+    def make_test(self):
+        return ExampleTests('success')
+
+    def test_start_test_twice(self):
+        reporter = self.make_reporter()
+        test = self.make_test()
+        reporter.startTest(test)
+        self.assertRaises(InvalidStateError, reporter.startTest, test)
+
+    def test_stop_without_start(self):
+        reporter = self.make_reporter()
+        test = self.make_test()
+        self.assertRaises(InvalidStateError, reporter.stopTest, test)
+
+    def test_stop_different_to_start(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        reporter.startTest(test1)
+        self.assertRaises(InvalidStateError, reporter.stopTest, test2)
+
+    def test_stop_resets(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        reporter.startTest(test1)
+        reporter.stopTest(test1)
+        self.assertIs(None, reporter.startTest(test2))
+
+    def test_different_success(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        reporter.startTest(test1)
+        self.assertRaises(InvalidStateError, reporter.addSuccess, test2)
+
+    def test_different_failure(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        dummy_failure = (None, None, None)
+        reporter.startTest(test1)
+        self.assertRaises(
+            InvalidStateError, reporter.addFailure, test2, dummy_failure)
+
+    def test_different_error(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        dummy_error = (None, None, None)
+        reporter.startTest(test1)
+        self.assertRaises(
+            InvalidStateError, reporter.addError, test2, dummy_error)
+
+    def test_different_expected_failure(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        dummy_error = (None, None, None)
+        dummy_todo = None
+        reporter.startTest(test1)
+        self.assertRaises(
+            InvalidStateError,
+            reporter.addExpectedFailure, test2, dummy_error, dummy_todo)
+
+    def test_different_unexpected_success(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        dummy_todo = None
+        reporter.startTest(test1)
+        self.assertRaises(
+            InvalidStateError,
+            reporter.addUnexpectedSuccess, test2, dummy_todo)
+
+    def test_different_skip(self):
+        reporter = self.make_reporter()
+        test1 = ExampleTests('success')
+        test2 = ExampleTests('failure')
+        dummy_reason = None
+        reporter.startTest(test1)
+        self.assertRaises(
+            InvalidStateError, reporter.addSkip, test2, dummy_reason)

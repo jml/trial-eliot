@@ -69,6 +69,12 @@ def make_error_message(message_type, failure):
     )
 
 
+class InvalidStateError(Exception):
+    """
+    Raised when someone attempts to put an EliotReporter into an invalid state.
+    """
+
+
 @implementer(IReporter)
 class EliotReporter(object):
 
@@ -79,9 +85,16 @@ class EliotReporter(object):
         self.shouldStop = False
         self.testsRun = 0
         add_destination(self._write_message)
+        self._current_test = None
 
     def _write_message(self, message):
         self._stream.write(json.dumps(message) + "\n")
+
+    def _ensure_test_running(self, expected_test):
+        if not self._current_test or self._current_test != expected_test:
+            raise InvalidStateError(
+                'Expected {} to be running, was {} instead'.format(
+                    expected_test, self._current_test))
 
     def startTest(self, method):
         """
@@ -89,6 +102,11 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
+        if self._current_test:
+            raise InvalidStateError(
+                'Trying to start {}, but {} already started'.format(
+                    method, self._current_test))
+        self._current_test = method
         self._action = TEST(test=method)
         self._action.__enter__()
 
@@ -98,12 +116,15 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
+        self._ensure_test_running(method)
+        self._current_test = None
         self._action.__exit__(None, None, None)
 
     def addSuccess(self, test):
         """
         Record that test passed.
         """
+        self._ensure_test_running(test)
 
     def addError(self, test, error):
         """
@@ -114,6 +135,7 @@ class EliotReporter(object):
             three-tuple in the style of C{sys.exc_info()} or a
             L{Failure<twisted.python.failure.Failure>} object.
         """
+        self._ensure_test_running(test)
         make_error_message(ERROR, error).write()
 
     def addFailure(self, test, failure):
@@ -125,6 +147,7 @@ class EliotReporter(object):
             either be a three-tuple in the style of C{sys.exc_info()}
             or a L{Failure<twisted.python.failure.Failure>} object.
         """
+        self._ensure_test_running(test)
         make_error_message(FAILURE, failure).write()
 
     def addExpectedFailure(self, test, failure, todo):
@@ -138,6 +161,7 @@ class EliotReporter(object):
         @type todo: L{unittest.Todo}
         @param todo: The reason for the test's TODO status.
         """
+        self._ensure_test_running(test)
 
     def addUnexpectedSuccess(self, test, todo):
         """
@@ -148,6 +172,7 @@ class EliotReporter(object):
         @type todo: L{unittest.Todo}
         @param todo: The reason for the test's TODO status.
         """
+        self._ensure_test_running(test)
 
     def addSkip(self, test, reason):
         """
@@ -157,6 +182,7 @@ class EliotReporter(object):
         @param reason: An object that the test case has specified as the reason
             for skipping the test.
         """
+        self._ensure_test_running(test)
 
     def wasSuccessful(self):
         """
