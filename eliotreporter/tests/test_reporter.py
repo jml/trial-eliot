@@ -132,7 +132,7 @@ class TestEliotReporter(unittest.TestCase):
     @capture_logging(None)
     def test_run_erroring_test(self, logger):
         """
-        Running a failing test records the failure as a message.
+        Running a test that raises an error records the error as a message.
         """
         reporter = self.make_reporter()
         error = RuntimeError('everything is catching on fire')
@@ -147,6 +147,26 @@ class TestEliotReporter(unittest.TestCase):
             {u'exception': error.__class__,
              u'message_type': u'trial:test:error',
              u'reason': error,
+             u'task_level': [2],
+            }, failure_message)
+
+    @capture_logging(None)
+    def test_run_skipping_test(self, logger):
+        """
+        Running a test that skips itself records the skip as a message.
+        """
+        reporter = self.make_reporter()
+        reason = 'No need'
+        error = unittest.SkipTest(reason)
+        test = self.make_failing_test(error)
+        test.run(reporter)
+        self.assert_one_task(logger.messages)
+        failure_message = dict(logger.messages[1])
+        failure_message.pop('task_uuid')
+        failure_message.pop('timestamp')
+        self.assertEqual(
+            {u'message_type': u'trial:test:skip',
+             u'reason': reason,
              u'task_level': [2],
             }, failure_message)
 

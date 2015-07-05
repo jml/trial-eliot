@@ -54,6 +54,15 @@ Logged when an assertion fails in a test.
 FAILURE = MessageType(u'trial:test:failure', [_EXCEPTION, _REASON, _TRACEBACK])
 
 
+_SKIP_REASON = Field(u'reason', unicode, 'Reason for skipping a test')
+
+
+"""
+Logged when a test is skipped.
+"""
+SKIP = MessageType(u'trial:test:skip', [_SKIP_REASON])
+
+
 def _failure_to_exception_tuple(failure):
     """
     Convert a ``Failure`` to an exception 3-tuple.

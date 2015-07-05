@@ -21,9 +21,10 @@ from twisted.trial.itrial import IReporter
 from zope.interface import implementer
 
 from ._types import (
-    TEST,
     ERROR,
     FAILURE,
+    SKIP,
+    TEST,
     make_error_message,
 )
 
@@ -149,6 +150,7 @@ class EliotReporter(object):
             for skipping the test.
         """
         self._ensure_test_running(test)
+        SKIP(reason=reason).write()
 
     def wasSuccessful(self):
         """
