@@ -31,6 +31,12 @@ def get_task_ids(messages):
     return set((x['task_uuid'] for x in messages))
 
 
+def make_reporter(stream=None):
+    if stream is None:
+        stream = StringIO()
+    return EliotReporter(stream, None, None, None)
+
+
 def make_test(function, *args, **kwargs):
     """
     Make a test that just runs the function with the given arguments.
@@ -74,11 +80,6 @@ def make_skipping_test(reason):
 
 class TestEliotReporter(unittest.TestCase):
 
-    def make_reporter(self, stream=None):
-        if stream is None:
-            stream = StringIO()
-        return EliotReporter(stream, None, None, None)
-
     def assert_one_task(self, messages):
         self.assertEqual(1, len(get_task_ids(messages)), messages)
 
@@ -87,7 +88,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         Starting and stopping a test logs a whole action.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test = make_successful_test()
         reporter.startTest(test)
         reporter.stopTest(test)
@@ -99,7 +100,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         Running a test with the Eliot reporter logs an action.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test = make_successful_test()
         test.run(reporter)
         [action] = LoggedAction.of_type(logger.serialize(), TEST)
@@ -110,7 +111,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         A message logged within a test is logged inside the containing action.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         message = DUMMY_MESSAGE(foo='bar')
         test = make_test(lambda ignored: message.write())
         test.run(reporter)
@@ -126,7 +127,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         Running a failing test records the failure as a message.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         reason = '1 != 3'
         test = make_failing_test(reason)
         test.run(reporter)
@@ -148,7 +149,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         Running a test that raises an error records the error as a message.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         error = RuntimeError('everything is catching on fire')
         test = make_erroring_test(error)
         test.run(reporter)
@@ -169,7 +170,7 @@ class TestEliotReporter(unittest.TestCase):
         """
         Running a test that skips itself records the skip as a message.
         """
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         reason = 'No need'
         test = make_skipping_test(reason)
         test.run(reporter)
@@ -195,31 +196,26 @@ class TestEliotReporterDefences(unittest.TestCase):
     that the defensive assertions we've written work as expected.
     """
 
-    def make_reporter(self, stream=None):
-        if stream is None:
-            stream = StringIO()
-        return EliotReporter(stream, None, None, None)
-
     def test_start_test_twice(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test = make_successful_test()
         reporter.startTest(test)
         self.assertRaises(InvalidStateError, reporter.startTest, test)
 
     def test_stop_without_start(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test = make_successful_test()
         self.assertRaises(InvalidStateError, reporter.stopTest, test)
 
     def test_stop_different_to_start(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         reporter.startTest(test1)
         self.assertRaises(InvalidStateError, reporter.stopTest, test2)
 
     def test_stop_resets(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         reporter.startTest(test1)
@@ -227,14 +223,14 @@ class TestEliotReporterDefences(unittest.TestCase):
         self.assertIs(None, reporter.startTest(test2))
 
     def test_different_success(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         reporter.startTest(test1)
         self.assertRaises(InvalidStateError, reporter.addSuccess, test2)
 
     def test_different_failure(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         dummy_failure = (None, None, None)
@@ -243,7 +239,7 @@ class TestEliotReporterDefences(unittest.TestCase):
             InvalidStateError, reporter.addFailure, test2, dummy_failure)
 
     def test_different_error(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         dummy_error = (None, None, None)
@@ -252,7 +248,7 @@ class TestEliotReporterDefences(unittest.TestCase):
             InvalidStateError, reporter.addError, test2, dummy_error)
 
     def test_different_expected_failure(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         dummy_error = (None, None, None)
@@ -263,7 +259,7 @@ class TestEliotReporterDefences(unittest.TestCase):
             reporter.addExpectedFailure, test2, dummy_error, dummy_todo)
 
     def test_different_unexpected_success(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         dummy_todo = None
@@ -273,7 +269,7 @@ class TestEliotReporterDefences(unittest.TestCase):
             reporter.addUnexpectedSuccess, test2, dummy_todo)
 
     def test_different_skip(self):
-        reporter = self.make_reporter()
+        reporter = make_reporter()
         test1 = make_successful_test()
         test2 = make_successful_test()
         dummy_reason = None
