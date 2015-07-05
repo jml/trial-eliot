@@ -78,7 +78,8 @@ class InvalidStateError(Exception):
 @implementer(IReporter)
 class EliotReporter(object):
 
-    def __init__(self, stream, tbformat, rterrors, log):
+    def __init__(self, stream, tbformat='default', realtime=False,
+                 publisher=None):
         self._stream = stream
         self.tbformat = tbformat
         self.args = ()
@@ -86,12 +87,13 @@ class EliotReporter(object):
         self.testsRun = 0
         add_destination(self._write_message)
         self._current_test = None
+        self._successful = True
 
     def _write_message(self, message):
         self._stream.write(json.dumps(message) + "\n")
 
     def _ensure_test_running(self, expected_test):
-        if not self._current_test or self._current_test != expected_test:
+        if self._current_test and self._current_test != expected_test:
             raise InvalidStateError(
                 'Expected {} to be running, was {} instead'.format(
                     expected_test, self._current_test))
@@ -116,6 +118,9 @@ class EliotReporter(object):
 
         @param method: an object that is adaptable to ITestMethod
         """
+        if not self._current_test:
+            raise InvalidStateError(
+                'Trying to stop {} without starting it first'.format(method))
         self._ensure_test_running(method)
         self._current_test = None
         self._action.__exit__(None, None, None)
@@ -137,6 +142,7 @@ class EliotReporter(object):
         """
         self._ensure_test_running(test)
         make_error_message(ERROR, error).write()
+        self._successful = False
 
     def addFailure(self, test, failure):
         """
@@ -149,6 +155,7 @@ class EliotReporter(object):
         """
         self._ensure_test_running(test)
         make_error_message(FAILURE, failure).write()
+        self._successful = False
 
     def addExpectedFailure(self, test, failure, todo):
         """
@@ -189,6 +196,10 @@ class EliotReporter(object):
         Return a boolean indicating whether all test results that were reported
         to this reporter were successful or not.
         """
+        return self._successful
+
+    def stop(self):
+        self.shouldStop = True
 
     def done(self):
         """

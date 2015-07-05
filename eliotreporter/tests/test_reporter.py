@@ -17,6 +17,7 @@ import unittest2 as unittest
 
 from eliot import Field, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
+from twisted.trial.test import test_reporter
 
 from eliotreporter import EliotReporter
 from .._reporter import TEST, InvalidStateError
@@ -249,3 +250,8 @@ class TestEliotReporterDefences(unittest.TestCase):
         reporter.startTest(test1)
         self.assertRaises(
             InvalidStateError, reporter.addSkip, test2, dummy_reason)
+
+
+class InterfaceTests(test_reporter.ReporterInterfaceTests):
+
+    resultFactory = EliotReporter
