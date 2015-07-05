@@ -18,6 +18,7 @@ import unittest2 as unittest
 from eliot import Field, MessageType
 from eliot.testing import assertContainsFields, capture_logging, LoggedAction
 from twisted.trial.test import test_reporter
+from twisted.trial.unittest import SkipTest, SynchronousTestCase
 
 from eliotreporter import EliotReporter
 from .._reporter import TEST, InvalidStateError
@@ -41,7 +42,7 @@ def make_test(function, *args, **kwargs):
     """
     Make a test that just runs the function with the given arguments.
     """
-    class ExampleTest(unittest.TestCase):
+    class ExampleTest(SynchronousTestCase):
         def __init__(self, method_name, function, args, kwargs):
             super(ExampleTest, self).__init__(method_name)
             self._function = function
@@ -74,7 +75,7 @@ def make_erroring_test(exception):
 
 
 def make_skipping_test(reason):
-    error = unittest.SkipTest(reason)
+    error = SkipTest(reason)
     return make_erroring_test(error)
 
 
