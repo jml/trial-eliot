@@ -113,6 +113,34 @@ def to_tasks(messages):
     return tasks.transform([ny], _sort_by_level)
 
 
+class Action(PClass):
+    """
+    An Eliot Action.
+    """
+
+    end_time = field()
+    messages = field()
+    start_time = field()
+    status = field()
+    task_uuid = field()
+
+    @classmethod
+    def new(cls, messages):
+        [task_uuid] = list(set(m.task_uuid for m in messages))
+        # XXX: Add another layer so we have ActionStart, ActionSuccess, and
+        # ActionFailed "messages". Then the responsibility of this class is
+        # merely to assemble those into a coherent representation of an
+        # Action, raising errors for type validation.
+        status = messages[-1].fields.get('action_status')
+        return cls(
+            messages=pvector(),
+            status=status,
+            task_uuid=task_uuid,
+            start_time=messages[0].timestamp,
+            end_time=messages[-1].timestamp,
+        )
+
+
 def _parse_entry(entry):
     """Parse a single serialized JSON object."""
     return freeze(json.loads(entry))

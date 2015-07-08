@@ -19,7 +19,7 @@ from pyrsistent import m, pmap
 import unittest2 as unittest
 
 
-from .._parse import Message, parse_json_stream, to_tasks
+from .._parse import Action, Message, parse_json_stream, to_tasks
 
 
 class TestParser(unittest.TestCase):
@@ -134,3 +134,57 @@ class TestTasks(unittest.TestCase):
                 m(task_uuid='foo'),
             ])
         self.assertEqual(m(foo=messages), to_tasks(messages))
+
+
+class TestActions(unittest.TestCase):
+
+    def test_simple_action_task_uuid(self):
+        start_time = time.time()
+        end_time = start_time + 10
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+        ]
+        action = Action.new(messages)
+        self.assertEqual('foo', action.task_uuid)
+        self.assertEqual('succeeded', action.status)
+        self.assertEqual([], action.messages)
+        self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
+
+    def test_multiple_tasks(self):
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+            )),
+            Message.new(m(
+                task_uuid='bar',
+                task_level=[2],
+                action_status='succeeded',
+            )),
+        ]
+        self.assertRaises(ValueError, Action.new, messages)
+
+    # XXX: Incomplete actions
+    # - does end_time make sense?
+
+    # XXX: Actions that fail with exceptinons
+
+    # XXX: Actions that have success fields added
+
+    # XXX: Operation on incomplete actions to add a message?
+
+    # XXX: Actions that contain actions
+
+    # XXX: Duration property
