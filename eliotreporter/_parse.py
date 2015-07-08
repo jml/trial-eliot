@@ -100,14 +100,29 @@ def _sort_by_level(messages):
 
 
 def to_tasks(messages):
+    """Group a sequence of ``Message`` objects by task.
+
+    A "task" is a top-level action identified by a ``task_uuid`` field. All
+    messages that have the same value of ``task_uuid`` are part of the same
+    task.
+
+    Returns a dictionary mapping ``task_uuid`` to a sequence of messages
+    sorted by task level.
+    """
     tasks = _to_tasks(messages)
     return tasks.transform([ny], _sort_by_level)
 
 
 def _parse_entry(entry):
+    """Parse a single serialized JSON object."""
     return freeze(json.loads(entry))
 
 
 def parse_json_stream(lines):
+    """
+    Parse a stream of JSON objects.
+
+    Assumes that ``lines`` is an iterable of serialized JSON objects.
+    """
     for line in lines:
         yield _parse_entry(line.strip())

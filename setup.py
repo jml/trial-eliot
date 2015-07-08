@@ -26,6 +26,7 @@ setup(
     install_requires=[
         'eliot',
         'pyrsistent',
+        'toolz',
         'Twisted',
         'zope.interface',
     ],
