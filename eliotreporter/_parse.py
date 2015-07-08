@@ -18,8 +18,9 @@ Take the output of an Eliot reporter and turn it into something useful.
 
 from datetime import datetime
 import json
+from operator import attrgetter
 
-from pyrsistent import PClass, field, freeze
+from pyrsistent import PClass, field, freeze, ny, pvector
 
 
 # TODO: No doubt much of this is more general than eliotreporter, or tests.
@@ -87,6 +88,27 @@ class Message(PClass):
         # lazy to bother right now.
         fields['timestamp'] = self.timestamp
         return fields.persistent()
+
+
+def _to_tasks(messages):
+    tasks = {}
+    for message in messages:
+        task_uuid = message.task_uuid
+        if task_uuid in tasks:
+            tasks[task_uuid].append(message)
+        else:
+            tasks[task_uuid] = [message]
+    return freeze(tasks)
+
+
+def _sort_by_level(messages):
+    return pvector(sorted(messages, key=attrgetter('task_level')))
+
+
+def to_tasks(messages):
+    tasks = _to_tasks(messages)
+    return tasks.transform([ny], _sort_by_level)
+
 
 def _parse_entry(entry):
     return freeze(json.loads(entry))

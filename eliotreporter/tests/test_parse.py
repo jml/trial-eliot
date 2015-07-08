@@ -15,11 +15,11 @@
 from datetime import datetime
 import time
 
-from pyrsistent import m
+from pyrsistent import m, pmap
 import unittest2 as unittest
 
 
-from .._parse import Message, parse_json_stream
+from .._parse import Message, parse_json_stream, to_tasks
 
 
 class TestParser(unittest.TestCase):
@@ -86,3 +86,51 @@ class TestMessage(unittest.TestCase):
             ),
             message.as_dict(),
         )
+
+
+class TestTasks(unittest.TestCase):
+
+    def test_single_task(self):
+        messages = map(
+            Message.new, [
+                m(task_uuid='foo', task_level=[1]),
+                m(task_uuid='foo', task_level=[2]),
+            ])
+        self.assertEqual(m(foo=messages), to_tasks(messages))
+
+    def test_multiple_tasks(self):
+        messages = map(
+            Message.new, [
+                m(task_uuid='foo', task_level=[1]),
+                m(task_uuid='bar', task_level=[1]),
+                m(task_uuid='foo', task_level=[2]),
+            ])
+        self.assertEqual(
+            m(
+                foo=[messages[0], messages[2]],
+                bar=[messages[1]],
+            ),
+            to_tasks(messages))
+
+    def test_unordered_messages(self):
+        messages = map(
+            Message.new, [
+                m(task_uuid='foo', task_level=[2]),
+                m(task_uuid='foo', task_level=[1]),
+            ])
+        self.assertEqual(m(foo=[messages[1], messages[0]]), to_tasks(messages))
+
+    def test_no_task_uuid(self):
+        messages = map(
+            Message.new, [
+                m(foo="bar"),
+            ])
+        self.assertEqual(pmap({None: messages}), to_tasks(messages))
+
+    def test_no_task_level(self):
+        messages = map(
+            Message.new, [
+                m(task_uuid='foo'),
+                m(task_uuid='foo'),
+            ])
+        self.assertEqual(m(foo=messages), to_tasks(messages))
