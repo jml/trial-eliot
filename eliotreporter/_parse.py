@@ -16,9 +16,10 @@
 Take the output of an Eliot reporter and turn it into something useful.
 """
 
+from datetime import datetime
 import json
 
-from pyrsistent import freeze
+from pyrsistent import PClass, field, freeze
 
 
 # TODO: No doubt much of this is more general than eliotreporter, or tests.
@@ -34,6 +35,58 @@ from pyrsistent import freeze
 # - each Task to tree of actions
 # - find actions that are tests (action_type == 'trial:test')
 # - interpret those actions as tests
+
+
+def fmap(f, x):
+    return None if x is None else f(x)
+
+
+def remove_fields(d, fields):
+    e = d.evolver()
+    for f in fields:
+        if f in e:
+            del e[f]
+    return e.persistent()
+
+
+def get_timestamp(contents):
+    return fmap(datetime.fromtimestamp, contents.get('timestamp'))
+
+
+class Message(PClass):
+    """
+    A parsed Eliot message.
+    """
+
+    task_uuid = field()
+    task_level = field()
+    timestamp = field()
+    fields = field()
+
+    @classmethod
+    def new(klass, contents):
+        fields = remove_fields(
+            contents, [
+                'task_uuid',
+                'task_level',
+                'timestamp',
+            ])
+        return klass(
+            task_uuid=contents.get('task_uuid'),
+            task_level=contents.get('task_level'),
+            timestamp=get_timestamp(contents),
+            fields=fields,
+        )
+
+    def as_dict(self):
+        fields = self.fields.evolver()
+        fields['task_uuid'] = self.task_uuid
+        fields['task_level'] = self.task_level
+        # XXX: Not quite a full reversal, because the Python APIs for turning
+        # datetimes into Unix timestamps are awful and jml is too tired and
+        # lazy to bother right now.
+        fields['timestamp'] = self.timestamp
+        return fields.persistent()
 
 def _parse_entry(entry):
     return freeze(json.loads(entry))
