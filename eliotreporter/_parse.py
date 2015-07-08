@@ -21,6 +21,7 @@ import json
 from operator import attrgetter
 
 from pyrsistent import PClass, field, freeze, ny, pvector
+from toolz.itertoolz import groupby
 
 
 # TODO: No doubt much of this is more general than eliotreporter, or tests.
@@ -91,14 +92,7 @@ class Message(PClass):
 
 
 def _to_tasks(messages):
-    tasks = {}
-    for message in messages:
-        task_uuid = message.task_uuid
-        if task_uuid in tasks:
-            tasks[task_uuid].append(message)
-        else:
-            tasks[task_uuid] = [message]
-    return freeze(tasks)
+    return freeze(groupby(attrgetter('task_uuid'), messages))
 
 
 def _sort_by_level(messages):
