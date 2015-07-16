@@ -54,6 +54,7 @@ def remove_fields(d, fields):
 def get_timestamp(contents):
     return fmap(datetime.fromtimestamp, contents.get('timestamp'))
 
+# XXX: Add message and action type
 
 class Message(PClass):
     """

@@ -160,6 +160,7 @@ class TestActions(unittest.TestCase):
         self.assertEqual('succeeded', action.status)
         self.assertEqual([], action.messages)
         self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
+        self.assertEqual(datetime.fromtimestamp(end_time), action.end_time)
 
     def test_multiple_tasks(self):
         messages = [
