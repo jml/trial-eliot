@@ -28,6 +28,18 @@ from .._parse import (
 )
 
 
+def make_uuid():
+    return object()
+
+
+def make_message_data(**kwargs):
+    return m(**kwargs)
+
+
+def make_timestamp():
+    return time.time()
+
+
 class TestParser(unittest.TestCase):
 
     def test_json_stream(self):
@@ -38,73 +50,64 @@ class TestParser(unittest.TestCase):
 
 class TestMessage(unittest.TestCase):
 
-    def make_uuid(self):
-        return object()
-
-    def make_message_data(self, **args):
-        return m(**args)
-
-    def make_timestamp(self):
-        return time.time()
-
     def test_task_uuid(self):
-        task_uuid = self.make_uuid()
-        data = self.make_message_data(task_uuid=task_uuid)
+        task_uuid = make_uuid()
+        data = make_message_data(task_uuid=task_uuid)
         message = Message.new(data)
         self.assertEqual(task_uuid, message.task_uuid)
 
     def test_task_level(self):
         task_level = [1]
-        data = self.make_message_data(task_level=[1])
+        data = make_message_data(task_level=[1])
         message = Message.new(data)
         self.assertEqual(task_level, message.task_level)
 
     def test_timestamp(self):
-        timestamp = self.make_timestamp()
-        data = self.make_message_data(timestamp=timestamp)
+        timestamp = make_timestamp()
+        data = make_message_data(timestamp=timestamp)
         message = Message.new(data)
         self.assertEqual(datetime.fromtimestamp(timestamp), message.timestamp)
 
     def test_other_fields(self):
-        data = self.make_message_data(foo="bar", baz="qux")
+        data = make_message_data(foo="bar", baz="qux")
         message = Message.new(data)
         self.assertEqual(m(foo="bar", baz="qux"), message.fields)
 
     def test_message_type(self):
-        data = self.make_message_data(foo="bar", baz="qux", message_type="test:type")
+        data = make_message_data(foo="bar", baz="qux", message_type="test:type")
         message = Message.new(data)
         self.assertEqual('test:type', message.entry_type)
 
     def test_message_kind(self):
-        data = self.make_message_data(foo="bar", baz="qux")
+        data = make_message_data(foo="bar", baz="qux")
         message = Message.new(data)
         self.assertEqual(MessageKind.MESSAGE, message.kind)
 
     def test_action_start_kind(self):
-        data = self.make_message_data(
+        data = make_message_data(
             foo="bar", baz="qux", action_type="test:type",
             action_status="started")
         message = Message.new(data)
         self.assertEqual(MessageKind.ACTION_START, message.kind)
 
     def test_action_success_kind(self):
-        data = self.make_message_data(
+        data = make_message_data(
             foo="bar", baz="qux", action_type="test:type",
             action_status="succeeded")
         message = Message.new(data)
         self.assertEqual(MessageKind.ACTION_END, message.kind)
 
     def test_action_failure_kind(self):
-        data = self.make_message_data(
+        data = make_message_data(
             foo="bar", baz="qux", action_type="test:type",
             action_status="failed")
         message = Message.new(data)
         self.assertEqual(MessageKind.ACTION_END, message.kind)
 
     def test_as_dict(self):
-        task_uuid = self.make_uuid()
+        task_uuid = make_uuid()
         task_level = [1]
-        timestamp = self.make_timestamp()
+        timestamp = make_timestamp()
         data = m(
             task_uuid=task_uuid,
             task_level=task_level,
