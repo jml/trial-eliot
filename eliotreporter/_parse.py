@@ -22,6 +22,7 @@ from operator import attrgetter
 
 from pyrsistent import PClass, field, freeze, ny, pvector
 from toolz.itertoolz import groupby
+from twisted.python.constants import Names, NamedConstant
 
 
 # TODO: No doubt much of this is more general than eliotreporter, or tests.
@@ -55,6 +56,14 @@ def get_timestamp(contents):
     return fmap(datetime.fromtimestamp, contents.get('timestamp'))
 
 
+class AmbiguousMessageKind(Exception):
+
+    def __init__(self, message, reason):
+        super(AmbiguousMessageKind, self).__init__(
+            'Could not determine MessageKind for {}: {}'.format(
+                message, reason))
+
+
 class MessageKind(Names):
     """
     Different kinds of messages.
@@ -70,6 +79,9 @@ class MessageKind(Names):
 
 def _get_message_kind(message_data):
     if 'action_type' in message_data:
+        if 'message_type' in message_data:
+            raise AmbiguousMessageKind(
+                message_data, 'action_type and message_type both present')
         action_status = message_data.get('action_status')
         if action_status == 'started':
             return MessageKind.ACTION_START
@@ -77,8 +89,8 @@ def _get_message_kind(message_data):
             # XXX: eliot ought to define these as constants
             return MessageKind.ACTION_END
         else:
-            # XXX: Use specific exception.
-            raise ValueError(
+            raise AmbiguousMessageKind(
+                message_data,
                 'Unrecognized action_status: {}'.format(action_status))
     else:
         return MessageKind.MESSAGE

@@ -21,6 +21,7 @@ import unittest2 as unittest
 
 from .._parse import (
     Action,
+    AmbiguousMessageKind,
     Message,
     MessageKind,
     parse_json_stream,
@@ -129,6 +130,17 @@ class TestMessageKind(unittest.TestCase):
             action_status="failed")
         message = Message.new(data)
         self.assertEqual(MessageKind.ACTION_END, message.kind)
+
+    def test_action_type_without_status(self):
+        data = make_message_data(
+            foo="bar", baz="qux", action_type="test:type")
+        self.assertRaises(AmbiguousMessageKind, Message.new, data)
+
+    def test_action_type_and_message_type(self):
+        data = make_message_data(
+            foo="bar", baz="qux", action_type="test:type",
+            message_type="different:type", action_status="started")
+        self.assertRaises(AmbiguousMessageKind, Message.new, data)
 
 
 class TestTasks(unittest.TestCase):
