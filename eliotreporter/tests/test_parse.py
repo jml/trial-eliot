@@ -19,7 +19,13 @@ from pyrsistent import m, pmap
 import unittest2 as unittest
 
 
-from .._parse import Action, Message, parse_json_stream, to_tasks
+from .._parse import (
+    Action,
+    Message,
+    MessageKind,
+    parse_json_stream,
+    to_tasks,
+)
 
 
 class TestParser(unittest.TestCase):
@@ -68,6 +74,32 @@ class TestMessage(unittest.TestCase):
         data = self.make_message_data(foo="bar", baz="qux", message_type="test:type")
         message = Message.new(data)
         self.assertEqual('test:type', message.entry_type)
+
+    def test_message_kind(self):
+        data = self.make_message_data(foo="bar", baz="qux")
+        message = Message.new(data)
+        self.assertEqual(MessageKind.MESSAGE, message.kind)
+
+    def test_action_start_kind(self):
+        data = self.make_message_data(
+            foo="bar", baz="qux", action_type="test:type",
+            action_status="started")
+        message = Message.new(data)
+        self.assertEqual(MessageKind.ACTION_START, message.kind)
+
+    def test_action_success_kind(self):
+        data = self.make_message_data(
+            foo="bar", baz="qux", action_type="test:type",
+            action_status="succeeded")
+        message = Message.new(data)
+        self.assertEqual(MessageKind.ACTION_END, message.kind)
+
+    def test_action_failure_kind(self):
+        data = self.make_message_data(
+            foo="bar", baz="qux", action_type="test:type",
+            action_status="failed")
+        message = Message.new(data)
+        self.assertEqual(MessageKind.ACTION_END, message.kind)
 
     def test_as_dict(self):
         task_uuid = self.make_uuid()
@@ -151,11 +183,13 @@ class TestActions(unittest.TestCase):
                 task_uuid='foo',
                 task_level=[1],
                 action_type='omelette',
+                action_status='started',
                 timestamp=start_time,
             )),
             Message.new(m(
                 task_uuid='foo',
                 task_level=[2],
+                action_type='omelette',
                 action_status='succeeded',
                 timestamp=end_time,
             )),
@@ -173,10 +207,12 @@ class TestActions(unittest.TestCase):
                 task_uuid='foo',
                 task_level=[1],
                 action_type='omelette',
+                action_status='started',
             )),
             Message.new(m(
                 task_uuid='bar',
                 task_level=[2],
+                action_type='omelette',
                 action_status='succeeded',
             )),
         ]

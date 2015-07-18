@@ -54,7 +54,35 @@ def remove_fields(d, fields):
 def get_timestamp(contents):
     return fmap(datetime.fromtimestamp, contents.get('timestamp'))
 
-# XXX: Add message and action type
+
+class MessageKind(Names):
+    """
+    Different kinds of messages.
+
+    All Eliot log entries are either Messages, the start of an Action, or the
+    end of an Action.
+    """
+
+    MESSAGE = NamedConstant()
+    ACTION_START = NamedConstant()
+    ACTION_END = NamedConstant()
+
+
+def _get_message_kind(message_data):
+    if 'action_type' in message_data:
+        action_status = message_data.get('action_status')
+        if action_status == 'started':
+            return MessageKind.ACTION_START
+        elif action_status in ('succeeded', 'failed'):
+            # XXX: eliot ought to define these as constants
+            return MessageKind.ACTION_END
+        else:
+            # XXX: Use specific exception.
+            raise ValueError(
+                'Unrecognized action_status: {}'.format(action_status))
+    else:
+        return MessageKind.MESSAGE
+
 
 class Message(PClass):
     """
@@ -66,9 +94,12 @@ class Message(PClass):
     timestamp = field()
     fields = field()
     entry_type = field()
+    # XXX: Can we restrict the type of thhis?
+    kind = field()
 
     @classmethod
     def new(klass, contents):
+        kind = _get_message_kind(contents)
         fields = remove_fields(
             contents, [
                 'task_uuid',
@@ -81,6 +112,7 @@ class Message(PClass):
             task_level=contents.get('task_level'),
             timestamp=get_timestamp(contents),
             entry_type=contents.get('message_type'),
+            kind=kind,
             fields=fields,
         )
 
