@@ -64,6 +64,11 @@ class TestMessage(unittest.TestCase):
         message = Message.new(data)
         self.assertEqual(m(foo="bar", baz="qux"), message.fields)
 
+    def test_message_type(self):
+        data = self.make_message_data(foo="bar", baz="qux", message_type="test:type")
+        message = Message.new(data)
+        self.assertEqual('test:type', message.entry_type)
+
     def test_as_dict(self):
         task_uuid = self.make_uuid()
         task_level = [1]

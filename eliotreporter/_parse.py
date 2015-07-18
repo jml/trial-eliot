@@ -65,6 +65,7 @@ class Message(PClass):
     task_level = field()
     timestamp = field()
     fields = field()
+    entry_type = field()
 
     @classmethod
     def new(klass, contents):
@@ -73,11 +74,13 @@ class Message(PClass):
                 'task_uuid',
                 'task_level',
                 'timestamp',
+                'message_type',
             ])
         return klass(
             task_uuid=contents.get('task_uuid'),
             task_level=contents.get('task_level'),
             timestamp=get_timestamp(contents),
+            entry_type=contents.get('message_type'),
             fields=fields,
         )
 
