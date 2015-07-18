@@ -78,6 +78,32 @@ class TestMessage(unittest.TestCase):
         message = Message.new(data)
         self.assertEqual('test:type', message.entry_type)
 
+    def test_as_dict(self):
+        task_uuid = make_uuid()
+        task_level = [1]
+        timestamp = make_timestamp()
+        data = m(
+            task_uuid=task_uuid,
+            task_level=task_level,
+            timestamp=timestamp,
+            foo="bar",
+            baz="qux",
+        )
+        message = Message.new(data)
+        self.assertEqual(
+            m(
+                task_uuid=task_uuid,
+                task_level=task_level,
+                timestamp=datetime.fromtimestamp(timestamp),
+                foo="bar",
+                baz="qux",
+            ),
+            message.as_dict(),
+        )
+
+
+class TestMessageKind(unittest.TestCase):
+
     def test_message_kind(self):
         data = make_message_data(foo="bar", baz="qux")
         message = Message.new(data)
@@ -103,29 +129,6 @@ class TestMessage(unittest.TestCase):
             action_status="failed")
         message = Message.new(data)
         self.assertEqual(MessageKind.ACTION_END, message.kind)
-
-    def test_as_dict(self):
-        task_uuid = make_uuid()
-        task_level = [1]
-        timestamp = make_timestamp()
-        data = m(
-            task_uuid=task_uuid,
-            task_level=task_level,
-            timestamp=timestamp,
-            foo="bar",
-            baz="qux",
-        )
-        message = Message.new(data)
-        self.assertEqual(
-            m(
-                task_uuid=task_uuid,
-                task_level=task_level,
-                timestamp=datetime.fromtimestamp(timestamp),
-                foo="bar",
-                baz="qux",
-            ),
-            message.as_dict(),
-        )
 
 
 class TestTasks(unittest.TestCase):
