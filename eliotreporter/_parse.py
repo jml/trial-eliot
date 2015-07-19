@@ -17,6 +17,7 @@ Take the output of an Eliot reporter and turn it into something useful.
 """
 
 from datetime import datetime
+from itertools import imap
 import json
 from operator import attrgetter
 
@@ -432,4 +433,20 @@ def parse_json_stream(lines):
     Assumes that ``lines`` is an iterable of serialized JSON objects.
     """
     for line in lines:
-        yield _parse_entry(line.strip())
+        try:
+            yield _parse_entry(line.strip())
+        except ValueError as e:
+            # Silently ignore non-JSON lines.
+            # XXX: make this behaviour hookable
+            pass
+
+
+def parse_to_tasks(lines):
+    # XXX: Untested
+    messages = imap(Message.new, parse_json_stream(lines))
+    tasks = to_tasks(messages)
+    # XXX: Undefined behaviour for messages that aren't in a task (i.e. the
+    # contents of tasks[None])
+    for task in tasks.itervalues():
+        for action in make_nested_actions(task):
+            yield action
