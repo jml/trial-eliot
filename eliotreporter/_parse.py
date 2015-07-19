@@ -78,22 +78,26 @@ class MessageKind(Names):
 
 
 def _get_message_kind(message_data):
+    """
+    Given a dict of message data, return its kind and type.
+    """
     if 'action_type' in message_data:
         if 'message_type' in message_data:
             raise AmbiguousMessageKind(
                 message_data, 'action_type and message_type both present')
         action_status = message_data.get('action_status')
+        action_type = message_data.get('action_type')
         if action_status == 'started':
-            return MessageKind.ACTION_START
+            return MessageKind.ACTION_START, action_type
         elif action_status in ('succeeded', 'failed'):
             # XXX: eliot ought to define these as constants
-            return MessageKind.ACTION_END
+            return MessageKind.ACTION_END, action_type
         else:
             raise AmbiguousMessageKind(
                 message_data,
                 'Unrecognized action_status: {}'.format(action_status))
     else:
-        return MessageKind.MESSAGE
+        return MessageKind.MESSAGE, message_data.get('message_type')
 
 
 class Message(PClass):
@@ -111,19 +115,20 @@ class Message(PClass):
 
     @classmethod
     def new(klass, contents):
-        kind = _get_message_kind(contents)
+        kind, entry_type = _get_message_kind(contents)
         fields = remove_fields(
             contents, [
                 'task_uuid',
                 'task_level',
                 'timestamp',
                 'message_type',
+                'action_type',
             ])
         return klass(
             task_uuid=contents.get('task_uuid'),
             task_level=contents.get('task_level'),
             timestamp=get_timestamp(contents),
-            entry_type=contents.get('message_type'),
+            entry_type=entry_type,
             kind=kind,
             fields=fields,
         )

@@ -80,6 +80,12 @@ class TestMessage(unittest.TestCase):
         message = Message.new(data)
         self.assertEqual('test:type', message.entry_type)
 
+    def test_action_type(self):
+        data = make_message_data(
+            foo="bar", baz="qux", action_type="test:type", action_status="started")
+        message = Message.new(data)
+        self.assertEqual('test:type', message.entry_type)
+
     def test_as_dict(self):
         task_uuid = make_uuid()
         task_level = [1]
