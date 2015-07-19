@@ -39,7 +39,12 @@ from twisted.python.constants import Names, NamedConstant
 # - find actions that are tests (action_type == 'trial:test')
 # - interpret those actions as tests
 
+# XXX: Not clear on which exceptions are likely to be seen by users (most
+# likely due to corrupt data) and which exceptions "cannot happen" but are
+# worth having anyway for fast failure in the case of assumption failure.
 
+
+# XXX: These should really be defined by eliot itself.
 STARTED = 'started'
 SUCCEEDED = 'succeeded'
 FAILED = 'failed'
@@ -65,6 +70,8 @@ def get_timestamp(contents):
 
 
 class AmbiguousMessageKind(Exception):
+
+    # XXX: Move this to be closer to the other exceptions
 
     def __init__(self, message, reason):
         super(AmbiguousMessageKind, self).__init__(
@@ -98,7 +105,6 @@ def _get_message_kind(message_data):
         if action_status == 'started':
             return MessageKind.ACTION_START, action_type
         elif action_status in ('succeeded', 'failed'):
-            # XXX: eliot ought to define these as constants
             return MessageKind.ACTION_END, action_type
         else:
             raise AmbiguousMessageKind(
@@ -124,6 +130,8 @@ class Message(PClass):
     @classmethod
     def new(klass, contents):
         kind, entry_type = _get_message_kind(contents)
+        # XXX: Can probably reduce the duplication here and represent these as
+        # data.
         fields = remove_fields(
             contents, [
                 'task_uuid',
@@ -258,7 +266,10 @@ class Action(PClass):
         # XXX: Hey, look! It's another fold.
 
         # XXX: Doesn't allow receiving messages out-of-order. Maybe we should
-        # sort first? At the least, document it.
+        # sort first? Or allow out-of-order in _append? At the least, document
+        # it.
+
+        # XXX: No way to retrieve original messages.
         action = cls._start(messages[0])
         if len(messages) == 1:
             return action
