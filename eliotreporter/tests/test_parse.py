@@ -22,6 +22,7 @@ import unittest2 as unittest
 from .._parse import (
     Action,
     AlreadyEnded,
+    AlreadyStarted,
     AmbiguousMessageKind,
     DifferentTasks,
     Message,
@@ -305,6 +306,26 @@ class TestActions(unittest.TestCase):
             )),
         ]
         self.assertRaises(AlreadyEnded, Action.new, messages)
+
+    def test_another_start(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1, 1],
+                action_type='eggs',
+                action_status='started',
+                timestamp=start_time + 1,
+            )),
+        ]
+        self.assertRaises(AlreadyStarted, Action.new, messages)
 
     # XXX: Actions that fail with exceptinons
 

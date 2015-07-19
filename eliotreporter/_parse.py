@@ -215,6 +215,15 @@ class NotStarted(Exception):
             'Tried to start with non-start message: {}'.format(message))
 
 
+class AlreadyStarted(Exception):
+    """Tried to append a start action to an action."""
+
+    def __init__(self, action, message):
+        super(AlreadyStarted, self).__init__(
+            'Tried to append {} to already-started {}.'.format(
+                message, action))
+
+
 class Action(PClass):
     """
     An Eliot Action.
@@ -259,6 +268,8 @@ class Action(PClass):
         if self._is_ended():
             raise AlreadyEnded(self, message)
         status = message.fields.get('action_status')
+        if status == STARTED:
+            raise AlreadyStarted(self, message)
         if status in TERMINAL_STATUSES:
             # XXX: whither message.fields?
             # XXX: what if different action type?
