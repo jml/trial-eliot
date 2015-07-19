@@ -220,11 +220,13 @@ class Action(PClass):
     An Eliot Action.
     """
 
-    end_time = field()
     messages = field()
-    start_time = field()
-    status = field()
+
+    entry_type = field()
     task_uuid = field()
+    start_time = field()
+    end_time = field()
+    status = field()
 
     @classmethod
     def new(cls, messages):

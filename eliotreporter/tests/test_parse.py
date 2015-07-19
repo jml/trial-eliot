@@ -227,6 +227,7 @@ class TestActions(unittest.TestCase):
         self.assertEqual([], action.messages)
         self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
         self.assertEqual(datetime.fromtimestamp(end_time), action.end_time)
+        self.assertEqual('omelette', action.entry_type)
 
     def test_unfinished_action(self):
         start_time = time.time()
@@ -245,6 +246,7 @@ class TestActions(unittest.TestCase):
         self.assertEqual([], action.messages)
         self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
         self.assertIs(None, action.end_time)
+        self.assertEqual('omelette', action.entry_type)
 
     def test_non_starter(self):
         end_time = time.time()
