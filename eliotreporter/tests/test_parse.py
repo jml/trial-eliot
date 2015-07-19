@@ -203,6 +203,12 @@ class TestTasks(unittest.TestCase):
 
 class TestActions(unittest.TestCase):
 
+    def make_action(self, messages):
+        """
+        Wrapper API while we're still figuring out what to do.
+        """
+        return Action.new(messages)
+
     def test_simple_action_task_uuid(self):
         start_time = time.time()
         end_time = start_time + 10
@@ -222,7 +228,7 @@ class TestActions(unittest.TestCase):
                 timestamp=end_time,
             )),
         ]
-        action = Action.new(messages)
+        action = self.make_action(messages)
         self.assertEqual('foo', action.task_uuid)
         self.assertEqual('succeeded', action.status)
         self.assertEqual([], action.messages)
@@ -241,7 +247,7 @@ class TestActions(unittest.TestCase):
                 timestamp=start_time,
             )),
         ]
-        action = Action.new(messages)
+        action = self.make_action(messages)
         self.assertEqual('foo', action.task_uuid)
         self.assertEqual('started', action.status)
         self.assertEqual([], action.messages)
@@ -260,7 +266,7 @@ class TestActions(unittest.TestCase):
                 timestamp=end_time,
             )),
         ]
-        self.assertRaises(NotStarted, Action.new, messages)
+        self.assertRaises(NotStarted, self.make_action, messages)
 
     def test_multiple_tasks(self):
         messages = [
@@ -277,7 +283,7 @@ class TestActions(unittest.TestCase):
                 action_status='succeeded',
             )),
         ]
-        self.assertRaises(DifferentTasks, Action.new, messages)
+        self.assertRaises(DifferentTasks, self.make_action, messages)
 
     def test_end_twice(self):
         start_time = time.time()
@@ -305,7 +311,7 @@ class TestActions(unittest.TestCase):
                 timestamp=end_time + 2,
             )),
         ]
-        self.assertRaises(AlreadyEnded, Action.new, messages)
+        self.assertRaises(AlreadyEnded, self.make_action, messages)
 
     def test_another_start(self):
         start_time = time.time()
@@ -325,7 +331,8 @@ class TestActions(unittest.TestCase):
                 timestamp=start_time + 1,
             )),
         ]
-        self.assertRaises(AlreadyStarted, Action.new, messages)
+        self.assertRaises(AlreadyStarted, self.make_action, messages)
+
 
     # XXX: Actions that fail with exceptinons
 
