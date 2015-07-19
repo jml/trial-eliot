@@ -20,7 +20,7 @@ from datetime import datetime
 import json
 from operator import attrgetter
 
-from pyrsistent import PClass, field, freeze, ny, pvector
+from pyrsistent import PClass, field, freeze, ny, pvector, v
 from toolz.itertoolz import groupby
 from twisted.python.constants import Names, NamedConstant
 
@@ -182,6 +182,87 @@ def to_tasks(messages):
     return tasks.transform([ny], _sort_by_level)
 
 
+def _finished(message):
+    return (v(), message)
+
+
+def _in_progress(stack):
+    return (stack, None)
+
+
+def _pop(stack):
+    return (stack[:-1], stack[-1])
+
+
+def _push(stack, x):
+    return (stack.append(x), None)
+
+
+def _append_to_top(stack, message):
+    new_stack, top_action = _pop(stack)
+    return _push(new_stack, top_action._append_message(message))
+
+
+def _receive_message(action_stack, message):
+    kind = message.kind
+
+    if kind == MessageKind.ACTION_START:
+        return _push(action_stack, Action._start(message))
+
+    elif kind == MessageKind.MESSAGE:
+        if not action_stack:
+            return _finished(message)
+        else:
+            return _append_to_top(action_stack, message)
+
+    elif kind == MessageKind.ACTION_END:
+        if not action_stack:
+            raise EndWithoutStart(message)
+
+        (new_stack, current_action) = _pop(action_stack)
+        finished_action = current_action._append_message(message)
+
+        if new_stack:
+            return _append_to_top(new_stack, finished_action)
+        else:
+            return _finished(finished_action)
+
+    else:
+        raise AssertionError(
+            'Unknown kind for message {}: {}'.format(message, kind))
+
+
+def _collapse_stack(stack):
+    if not stack:
+        raise AssertionError('Can only collapse non-empty stacks')
+    if len(stack) == 1:
+        return stack[0]
+    return stack[0]._append_message(_collapse_stack(stack[1:]))
+
+
+def make_nested_actions(messages):
+    # XXX: This smells like a fold function to me.
+    stack = v()
+    for message in messages:
+        (new_stack, result) = _receive_message(stack, message)
+        # XXX: Can we do this without assignment?
+        stack = new_stack
+        if new_stack and result:
+            raise AssertionError(
+                'Received {} while we still had unprocessed input: {}'.format(
+                    result, stack))
+        elif new_stack:
+            continue
+        elif result:
+            yield result
+        else:
+            raise AssertionError(
+                'Tried to process {} but got no result'.format(message))
+    if stack:
+        # XXX: Alternatively, we might want to raise an exception here.
+        yield _collapse_stack(stack)
+
+
 def _get_task_uuid(messages):
     """
     Return the single task_uuid of messages.
@@ -244,6 +325,17 @@ class AlreadyStarted(Exception):
                 message, action))
 
 
+class EndWithoutStart(Exception):
+    """Tried to end an action when there was none started."""
+
+    # XXX: Is this really different from NotStarted?
+
+    def __init__(self, message):
+        super(EndWithoutStart, self).__init__(
+            'Got end message {} when there was nothing on the stack'.format(
+                message))
+
+
 class Action(PClass):
     """
     An Eliot Action.
@@ -296,9 +388,21 @@ class Action(PClass):
         _get_task_uuid([self, message])
         if self._is_ended():
             raise AlreadyEnded(self, message)
-        status = message.fields.get('action_status')
+
+        fields = getattr(message, 'fields', None)
+        if not fields:
+            # Then it's probably an action.
+            return self.set(messages=self.messages.append(message))
+
+        status = fields.get('action_status')
+        if not status:
+            # Then it's just a normal message.
+            return self.set(messages=self.messages.append(message))
+
         if status == STARTED:
+            # Nested actions are handled elsewhere.
             raise AlreadyStarted(self, message)
+
         if status in TERMINAL_STATUSES:
             # XXX: whither message.fields?
             if message.entry_type != self.entry_type:
@@ -307,8 +411,9 @@ class Action(PClass):
                 end_time=message.timestamp,
                 status=status,
             )
-        else:
-            return self.set(messages=self.messages.append(message))
+
+        # XXX: Probably have dedicated exception.
+        raise ValueError('Unknown status: {}'.format(status))
 
     def _is_ended(self):
         # XXX: add invariant for end_time & status being terminal

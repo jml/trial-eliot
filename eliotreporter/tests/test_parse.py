@@ -25,7 +25,9 @@ from .._parse import (
     AlreadyStarted,
     AmbiguousMessageKind,
     DifferentTasks,
+    EndWithoutStart,
     IncompatibleEnd,
+    make_nested_actions,
     Message,
     MessageKind,
     NotStarted,
@@ -355,11 +357,224 @@ class TestActions(unittest.TestCase):
         ]
         self.assertRaises(IncompatibleEnd, self.make_action, messages)
 
+    def test_inner_messages(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                message_type='flame:on',
+                timestamp=start_time + 1,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=start_time + 2,
+            )),
+        ]
+        action = self.make_action(messages)
+        self.assertEqual([messages[1]], action.messages)
 
     # XXX: Actions that fail with exceptinons
 
     # XXX: Actions that have success fields added
 
-    # XXX: Actions that contain actions
-
     # XXX: Duration property
+
+
+class TestNestedActions(unittest.TestCase):
+
+    def make_nested_action(self, messages):
+        return make_nested_actions(iter(messages)).next()
+
+    def test_non_action(self):
+        start_time = time.time()
+        message = Message.new(m(
+            task_uuid='foo',
+            task_level=[1],
+            message_type='crack',
+            timestamp=start_time,
+        ))
+        action = self.make_nested_action([message])
+        self.assertEqual(message, action)
+
+    def test_simple_case(self):
+        start_time = time.time()
+        end_time = start_time + 10
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+        ]
+        action = self.make_nested_action(messages)
+        self.assertEqual(Action.new(messages), action)
+
+    def test_incomplete_action(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+        ]
+        action = self.make_nested_action(messages)
+        self.assertEqual(Action.new(messages), action)
+
+    def test_nested_action(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2, 1],
+                action_type='eggs',
+                action_status='started',
+                timestamp=start_time + 1,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2, 2],
+                action_type='eggs',
+                action_status='succeeded',
+                timestamp=start_time + 2,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=start_time + 3,
+            )),
+        ]
+        action = self.make_nested_action(messages)
+        sub_action = Action.new(messages[1:-1])
+        expected = Action.new([messages[0], sub_action, messages[-1]])
+        self.assertEqual(expected, action)
+
+    def test_incomplete_nested_action(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2, 1],
+                action_type='eggs',
+                action_status='started',
+                timestamp=start_time + 1,
+            )),
+        ]
+        action = self.make_nested_action(messages)
+        sub_action = Action.new([messages[1]])
+        expected = Action.new([messages[0], sub_action])
+        self.assertEqual(expected, action)
+
+    def test_not_started(self):
+        end_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+        ]
+        self.assertRaises(
+            EndWithoutStart, self.make_nested_action, messages)
+
+    def test_nested_action_inner_messages(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                message_type='flame:on',
+                timestamp=start_time + 1,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3, 1],
+                action_type='eggs',
+                action_status='started',
+                timestamp=start_time + 2,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3, 2],
+                message_type='crack',
+                timestamp=start_time + 3,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3, 3],
+                action_type='eggs',
+                action_status='succeeded',
+                timestamp=start_time + 4,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[4],
+                message_type='flame:on',
+                timestamp=start_time + 5,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[5],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=start_time + 6,
+            )),
+        ]
+        action = self.make_nested_action(messages)
+        sub_action = Action.new(messages[2:-2])
+        expected = Action.new([
+            messages[0],
+            messages[1],
+            sub_action,
+            messages[-2],
+            messages[-1],
+        ])
+        self.assertEqual(expected, action)
+
