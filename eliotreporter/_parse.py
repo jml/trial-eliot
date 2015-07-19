@@ -207,6 +207,18 @@ class AlreadyEnded(Exception):
                 action, message))
 
 
+class IncompatibleEnd(Exception):
+    """
+    Tried to end an action with a different type to the one that started it.
+    """
+
+    def __init__(self, action, message):
+        super(IncompatibleEnd, self).__init__(
+            'Tried to end {} with {}, but types are incompatible '
+            '({} != {}).'.format(
+                action, message, action.entry_type, message.entry_type))
+
+
 class NotStarted(Exception):
     """Tried to create an action without a start message."""
 
@@ -239,7 +251,14 @@ class Action(PClass):
 
     @classmethod
     def new(cls, messages):
+        # XXX: Probably shouldn't bother providing this "simple" interface for
+        # actions. Instead, will provide a function that does the full, nested
+        # monty.
+
         # XXX: Hey, look! It's another fold.
+
+        # XXX: Doesn't allow receiving messages out-of-order. Maybe we should
+        # sort first? At the least, document it.
         action = cls._start(messages[0])
         if len(messages) == 1:
             return action
@@ -264,7 +283,6 @@ class Action(PClass):
 
     def _append_message(self, message):
         _get_task_uuid([self, message])
-        # XXX: Doesn't allow receiving messages out-of-order.
         if self._is_ended():
             raise AlreadyEnded(self, message)
         status = message.fields.get('action_status')
@@ -272,7 +290,8 @@ class Action(PClass):
             raise AlreadyStarted(self, message)
         if status in TERMINAL_STATUSES:
             # XXX: whither message.fields?
-            # XXX: what if different action type?
+            if message.entry_type != self.entry_type:
+                raise IncompatibleEnd(self, message)
             return self.set(
                 end_time=message.timestamp,
                 status=status,

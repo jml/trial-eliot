@@ -25,6 +25,7 @@ from .._parse import (
     AlreadyStarted,
     AmbiguousMessageKind,
     DifferentTasks,
+    IncompatibleEnd,
     Message,
     MessageKind,
     NotStarted,
@@ -332,6 +333,27 @@ class TestActions(unittest.TestCase):
             )),
         ]
         self.assertRaises(AlreadyStarted, self.make_action, messages)
+
+    def test_different_action_type_finishing(self):
+        start_time = time.time()
+        end_time = start_time + 10
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_type='russia',
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+        ]
+        self.assertRaises(IncompatibleEnd, self.make_action, messages)
 
 
     # XXX: Actions that fail with exceptinons
