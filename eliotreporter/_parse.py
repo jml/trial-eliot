@@ -161,6 +161,30 @@ def to_tasks(messages):
     return tasks.transform([ny], _sort_by_level)
 
 
+def _get_task_uuid(messages):
+    """
+    Return the single task_uuid of messages.
+
+    If there is more than one task_uuid, raise DifferentTasks.
+
+    If there are no task_uuids, return None.
+    """
+    task_uuids = frozenset(x.task_uuid for x in messages)
+    try:
+        [task_uuid] = list(task_uuids)
+    except ValueError:
+        raise DifferentTasks(messages)
+    return task_uuid
+
+
+class DifferentTasks(Exception):
+    """Messages ought to be in the same task, but aren't."""
+
+    def __init__(self, messages):
+        super(DifferentTasks, self).__init__(
+            'Expected {} to be in the same task'.format(messages))
+
+
 class Action(PClass):
     """
     An Eliot Action.
@@ -174,7 +198,7 @@ class Action(PClass):
 
     @classmethod
     def new(cls, messages):
-        [task_uuid] = list(set(m.task_uuid for m in messages))
+        task_uuid = _get_task_uuid(messages)
         # XXX: Add another layer so we have ActionStart, ActionSuccess, and
         # ActionFailed "messages". Then the responsibility of this class is
         # merely to assemble those into a coherent representation of an

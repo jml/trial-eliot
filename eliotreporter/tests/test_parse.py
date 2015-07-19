@@ -22,6 +22,7 @@ import unittest2 as unittest
 from .._parse import (
     Action,
     AmbiguousMessageKind,
+    DifferentTasks,
     Message,
     MessageKind,
     parse_json_stream,
@@ -234,7 +235,7 @@ class TestActions(unittest.TestCase):
                 action_status='succeeded',
             )),
         ]
-        self.assertRaises(ValueError, Action.new, messages)
+        self.assertRaises(DifferentTasks, Action.new, messages)
 
     # XXX: Incomplete actions
     # - does end_time make sense?
