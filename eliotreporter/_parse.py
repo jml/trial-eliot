@@ -40,6 +40,14 @@ from twisted.python.constants import Names, NamedConstant
 # - interpret those actions as tests
 
 
+STARTED = 'started'
+SUCCEEDED = 'succeeded'
+FAILED = 'failed'
+
+ALL_STATUSES = (STARTED, SUCCEEDED, FAILED)
+TERMINAL_STATUSES = (SUCCEEDED, FAILED)
+
+
 def fmap(f, x):
     return None if x is None else f(x)
 
@@ -190,6 +198,23 @@ class DifferentTasks(Exception):
             'Expected {} to be in the same task'.format(messages))
 
 
+class AlreadyEnded(Exception):
+    """Tried to end an action that's already ended."""
+
+    def __init__(self, action, message):
+        super(AlreadyEnded, self).__init__(
+            'Tried to end {} with {}, but it was already ended.'.format(
+                action, message))
+
+
+class NotStarted(Exception):
+    """Tried to create an action without a start message."""
+
+    def __init__(self, message):
+        super(NotStarted, self).__init__(
+            'Tried to start with non-start message: {}'.format(message))
+
+
 class Action(PClass):
     """
     An Eliot Action.
@@ -203,19 +228,48 @@ class Action(PClass):
 
     @classmethod
     def new(cls, messages):
-        task_uuid = _get_task_uuid(messages)
-        # XXX: Add another layer so we have ActionStart, ActionSuccess, and
-        # ActionFailed "messages". Then the responsibility of this class is
-        # merely to assemble those into a coherent representation of an
-        # Action, raising errors for type validation.
-        status = messages[-1].fields.get('action_status')
+        # XXX: Hey, look! It's another fold.
+        action = cls._start(messages[0])
+        if len(messages) == 1:
+            return action
+        for message in messages[1:]:
+            action = action._append_message(message)
+        return action
+
+    @classmethod
+    def _start(cls, message):
+        # XXX: whither message.fields?
+        status = message.fields.get('action_status')
+        if status != STARTED:
+            raise NotStarted(message)
         return cls(
             messages=pvector(),
+            task_uuid=message.task_uuid,
+            start_time=message.timestamp,
+            end_time=None,
+            entry_type=message.entry_type,
             status=status,
-            task_uuid=task_uuid,
-            start_time=messages[0].timestamp,
-            end_time=messages[-1].timestamp,
         )
+
+    def _append_message(self, message):
+        _get_task_uuid([self, message])
+        # XXX: Doesn't allow receiving messages out-of-order.
+        if self._is_ended():
+            raise AlreadyEnded(self, message)
+        status = message.fields.get('action_status')
+        if status in TERMINAL_STATUSES:
+            # XXX: whither message.fields?
+            # XXX: what if different action type?
+            return self.set(
+                end_time=message.timestamp,
+                status=status,
+            )
+        else:
+            return self.set(messages=self.messages.append(message))
+
+    def _is_ended(self):
+        # XXX: add invariant for end_time & status being terminal
+        return self.end_time or self.status in TERMINAL_STATUSES
 
 
 def _parse_entry(entry):

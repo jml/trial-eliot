@@ -21,10 +21,12 @@ import unittest2 as unittest
 
 from .._parse import (
     Action,
+    AlreadyEnded,
     AmbiguousMessageKind,
     DifferentTasks,
     Message,
     MessageKind,
+    NotStarted,
     parse_json_stream,
     to_tasks,
 )
@@ -226,6 +228,37 @@ class TestActions(unittest.TestCase):
         self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
         self.assertEqual(datetime.fromtimestamp(end_time), action.end_time)
 
+    def test_unfinished_action(self):
+        start_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+        ]
+        action = Action.new(messages)
+        self.assertEqual('foo', action.task_uuid)
+        self.assertEqual('started', action.status)
+        self.assertEqual([], action.messages)
+        self.assertEqual(datetime.fromtimestamp(start_time), action.start_time)
+        self.assertIs(None, action.end_time)
+
+    def test_non_starter(self):
+        end_time = time.time()
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+        ]
+        self.assertRaises(NotStarted, Action.new, messages)
+
     def test_multiple_tasks(self):
         messages = [
             Message.new(m(
@@ -243,14 +276,37 @@ class TestActions(unittest.TestCase):
         ]
         self.assertRaises(DifferentTasks, Action.new, messages)
 
-    # XXX: Incomplete actions
-    # - does end_time make sense?
+    def test_end_twice(self):
+        start_time = time.time()
+        end_time = start_time + 10
+        messages = [
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[1],
+                action_type='omelette',
+                action_status='started',
+                timestamp=start_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[2],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=end_time,
+            )),
+            Message.new(m(
+                task_uuid='foo',
+                task_level=[3],
+                action_type='omelette',
+                action_status='succeeded',
+                timestamp=end_time + 2,
+            )),
+        ]
+        self.assertRaises(AlreadyEnded, Action.new, messages)
 
     # XXX: Actions that fail with exceptinons
 
     # XXX: Actions that have success fields added
-
-    # XXX: Operation on incomplete actions to add a message?
 
     # XXX: Actions that contain actions
 
