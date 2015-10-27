@@ -154,3 +154,14 @@ def parse_json_stream(lines):
     """
     for line in lines:
         yield _parse_entry(line.strip())
+
+
+
+
+def main():
+    from pprint import pprint
+    from pyrsistent import thaw
+    import sys
+    with open(sys.argv[1]) as f:
+        tasks = to_tasks(Message.new(x) for x in parse_json_stream(f))
+        pprint(thaw(tasks))

@@ -33,6 +33,11 @@ setup(
     tests_require=[
         'unittest2',
     ],
+    entry_points={
+        'console_scripts': [
+            'trial-eliot-parse = eliotreporter._parse:main',
+        ],
+    },
     zip_safe=False,
     packages=find_packages('.'),
     classifiers=[
